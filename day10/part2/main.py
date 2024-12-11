@@ -43,10 +43,12 @@ class Node:
         if self.is_visited():
             return
         self.set_visited()
-        next_moves = find_next_moves(data, self.i, self.j)
+        
         if self.reached_hill_top():
             self.add_hill()
             return
+        
+        next_moves = find_next_moves(data, self.i, self.j)
 
         if len(next_moves) == 0:
             return
