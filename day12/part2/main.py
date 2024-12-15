@@ -1,7 +1,12 @@
 import copy
-from typing import List, Set
+from typing import Dict, List, Set
 
-VISITED = "$"
+VISITED = "."
+
+
+def eventually_print(should_print, *args):
+    if should_print:
+        print(*args)
 
 
 class Point:
@@ -51,21 +56,27 @@ class Line:
 
     def is_continuation(self, line: "Line"):
         if self.is_horizontal() and line.is_horizontal():
-            return (
-                self.point2 == line.point1
-                or self.point1 == line.point2
-                or self.point1 == line.point1
-                or self.point2 == line.point2
-            )
+            return self.__have_common_point(line)
+
         if self.is_vertical() and line.is_vertical():
-            return (
-                self.point2 == line.point1
-                or self.point1 == line.point2
-                or self.point1 == line.point1
-                or self.point2 == line.point2
-            )
+            return self.__have_common_point(line)
 
         return False
+
+    def __have_common_point(self, line: "Line"):
+        return (
+            self.point1 == line.point1
+            or self.point1 == line.point2
+            or self.point2 == line.point1
+            or self.point2 == line.point2
+        )
+
+    def __find_common_point(self, line: "Line") -> Point:
+        if self.point1 == line.point1 or self.point1 == line.point2:
+            return self.point1
+        if self.point2 == line.point1 or self.point2 == line.point2:
+            return self.point2
+        return None
 
     def set_is_side(self):
         self.is_side = True
@@ -81,43 +92,107 @@ class Line:
     def __hash__(self):
         return hash((self.point1, self.point2))
 
+    # region CONTINUATION IN GARDEN
+    def is_continuation_in_garden_vertical(self, garden, line: "Line", should_print):
+        # exclude diagonal continuation
+        column = self.point1.j  # all have same j
+        if (column >= len(garden[0])) or column <= 0:
+            return True
 
-class Side:
+        common_point = self.__find_common_point(line)
+        if common_point.i + 1 > len(garden):
+            raise Exception("Shouldn't go here")
 
-    def __init__(self, line_1: Line, line_2: Line):
-        self.points = set()
-        self.points.add(line_1.point1)
-        self.points.add(line_1.point2)
-        self.points.add(line_2.point1)
-        self.points.add(line_2.point2)
+        eventually_print(
+            should_print,
+            "[vertical]: Common point {} and column {}".format(common_point, column),
+        )
+        left_up_field = garden[common_point.i - 1][column - 1]
+        right_up_field = garden[common_point.i - 1][column]
 
-    def add_line(self, line: Line):
-        self.points.add(line.point1)
-        self.points.add(line.point2)
+        left_down_field = "^"
+        right_down_field = "*"
 
-    def is_vertical(self):
-        return self.points[0].j == self.points[1].j
+        if common_point.i + 1 < len(garden):
+            left_down_field = garden[common_point.i][column - 1]
+            right_down_field = garden[common_point.i][column]
 
-    def is_horizontal(self):
-        return self.points[0].i == self.points[1].i
+        eventually_print(
+            should_print,
+            f"{left_up_field} | {right_up_field}\n- - -\n{left_down_field} | {right_down_field}",
+        )
 
-    def is_continuation(self, line: Line):
-        if self.is_horizontal() and line.is_horizontal():
-            return (
-                line.point1.i == self.points[0].i and line.point2.i == self.points[1].i
+        if left_up_field == right_down_field:
+            eventually_print(should_print, "[vertical]: Left up = Right down")
+            return False
+        elif right_up_field == left_down_field:
+            eventually_print(should_print, "[vertical]: Right up = Left down")
+            return False
+        else:
+            return True
+
+    def is_continuation_in_garden_horizontal(self, garden, line: "Line", should_print):
+        # exclude diagonal continuation
+        row = self.point1.i  # all have same i
+        if row >= len(garden):
+            return True
+
+        if row <= 0:
+            return True
+
+        common_point = self.__find_common_point(line)
+        left_up_field = garden[row - 1][common_point.j - 1]
+        right_up_field = garden[row - 1][common_point.j]
+
+        left_down_field = "^"
+        right_down_field = "*"
+
+        if common_point.j + 1 < len(garden[0]):
+            left_down_field = garden[row][common_point.j - 1]
+            right_down_field = garden[row][common_point.j]
+
+        eventually_print(
+            should_print,
+            f"{left_up_field} | {right_up_field}\n- - -\n{left_down_field} | {right_down_field}",
+        )
+
+        if left_up_field == right_down_field:
+            eventually_print(should_print, "[horizontal]: Left up = Right down")
+            return False
+        elif right_up_field == left_down_field:
+            eventually_print(should_print, "[horizontal]: Right up = Left down")
+            return False
+        else:
+            return True
+
+    def is_continuation_in_garden(self, garden, line: "Line", should_print):
+        eventually_print(should_print, f"Checking continuation for {self} and {line}")
+        if (
+            self.is_horizontal()
+            and line.is_horizontal()
+            and self.__have_common_point(line)
+        ):
+            result = self.is_continuation_in_garden_horizontal(
+                garden, line, should_print
             )
-        if self.is_vertical() and line.is_vertical():
-            return (
-                self.points[0] == line.point1
-                or self.points[1] == line.point2
-                or self.points[0] == line.point2
-                or self.points[1] == line.point1
+            eventually_print(
+                should_print,
+                f"Horizontal continuation {self} -> {line} is {result}",
             )
+            return result
+
+        if self.is_vertical() and line.is_vertical() and self.__have_common_point(line):
+            result = self.is_continuation_in_garden_vertical(garden, line, should_print)
+            eventually_print(
+                should_print,
+                f"Vertical continuation {self} -> {line} is {result}",
+            )
+            return result
 
         return False
 
-    def __str__(self):
-        return f"Side({self.points})"
+
+# endregion
 
 
 def save_garden_to_file(garden, filename):
@@ -186,98 +261,70 @@ def find_all_visited(garden_a, garden_b):
     return new_garden
 
 
-def count_sides(lines: List[Line]):
-    side_counter = 0
-
+# region COUNT_SIDES
+def count_vertical_sides(garden, lines: List[Line], should_print):
     vertical_lines = [line for line in lines if line.is_vertical()]
+    vertical_lines = sorted(vertical_lines, key=lambda x: (x.point1.j, x.point1.i))
+    same_column: Dict[int, List[Line]] = {}
+    for line in vertical_lines:
+        if line.point1.j not in same_column:
+            same_column[line.point1.j] = []
+        same_column[line.point1.j].append(line)
+
+    sides_count = len(same_column.keys())
+    for column in same_column.values():
+        sorted(column, key=lambda x: (x.point1.j, x.point1.i))
+        for i in range(len(column) - 1):
+            if not column[i].is_continuation_in_garden(
+                garden, column[i + 1], should_print
+            ):
+                sides_count += 1
+            eventually_print(
+                should_print,
+                f"\n\n",
+            )
+
+    return sides_count
+
+
+def count_horizontal_sides(garden, lines: List[Line], should_print):
     horizontal_lines = [line for line in lines if line.is_horizontal()]
+    horizontal_lines = sorted(horizontal_lines, key=lambda x: (x.point1.i, x.point1.j))
+    same_row = {}
+    for line in horizontal_lines:
+        if line.point1.i not in same_row:
+            same_row[line.point1.i] = []
+        same_row[line.point1.i].append(line)
 
-    print(f"Vertical lines: {vertical_lines}")
-    print(f"Horizontal lines: {horizontal_lines}")
+    sides_count = len(same_row.keys())
+    for row in same_row.values():
+        sorted(row, key=lambda x: x.point1.j)
+        for i in range(len(row) - 1):
+            if not row[i].is_continuation_in_garden(garden, row[i + 1], should_print):
+                sides_count += 1
 
-    vertical_lines = sorted(vertical_lines, key=lambda x: (x.point1.i, x.point1.j))
-    horizontal_lines = sorted(horizontal_lines, key=lambda x: (x.point1.j, x.point1.i))
+            eventually_print(
+                should_print,
+                "\n\n",
+            )
 
-    sides = []
+    return sides_count
 
-    for i in range(len(vertical_lines)):
-        print(f"Vertical line: {vertical_lines[i]} of {len(vertical_lines)}")
-        if vertical_lines[i].is_side:
-            continue
-        no_continuation = True
-        
-        append = False
-        append_index = -1
-        for j in range(len(sides)):
-            for k in range(len(sides[j])):
-                if sides[j][k].is_continuation(vertical_lines[i]):
-                    append = True
-                    vertical_lines[i].set_is_side()
-                    no_continuation = False
-                    append_index = j
-                    break
-            if append:
-                break
-        if append:
-            sides[append_index].append(vertical_lines[i])
 
-        if no_continuation is False:
-            continue
+# endregion
 
-        for j in range(i + 1, len(vertical_lines)):
-            
-            if vertical_lines[i].is_continuation(vertical_lines[j]):
-                vertical_lines[i].set_is_side()
-                vertical_lines[j].set_is_side()
-                sides.append([vertical_lines[i], vertical_lines[j]])
-                no_continuation = False
-        if no_continuation:
-            side_counter += 1
-    
-    print(f"Sides vertical: {sides}")
-    sides = []
-    for i in range(len(horizontal_lines)):
-        if horizontal_lines[i].is_side:
-            continue
-        no_continuation = True
-        append = False
-        append_index = -1
-        for j in range(len(sides)):
-            for k in range(len(sides[j])):
-                if sides[j][k].is_continuation(horizontal_lines[i]):
-                    append = True
-                    horizontal_lines[i].set_is_side()
-                    no_continuation = False
-                    append_index = j
-                    break
-            if append:
-                break
-        
-        if append:
-            sides[append_index].append(horizontal_lines[i])
-        if no_continuation is False:
-            continue
-        
-        for j in range(i + 1, len(horizontal_lines)):
-            if horizontal_lines[i].is_continuation(horizontal_lines[j]):
-                if not horizontal_lines[i].is_side:
-                    side_counter += 1
-                horizontal_lines[i].set_is_side()
-                horizontal_lines[j].set_is_side()
-                sides.append([horizontal_lines[i], horizontal_lines[j]])
-                no_continuation = False
-        
-        if no_continuation:
-            side_counter += 1
-    
-    print(f"Sides horizontal: {sides}")
-    return side_counter
+
+def count_sides(garden, lines: List[Line], should_print):
+    horizontal = count_horizontal_sides(garden, lines, should_print)
+    vertical = count_vertical_sides(garden, lines, should_print)
+    eventually_print(should_print, f"Horizontal = {horizontal}, Vertical = {vertical}")
+    return horizontal + vertical
 
 
 if __name__ == "__main__":
     garden = []
 
-    with open("input.txt") as file:
+    with open("final_input.txt") as file:
         lines = file.read().splitlines()
         for line in lines:
             garden.append([c for c in line])
@@ -286,6 +333,9 @@ if __name__ == "__main__":
     working_garden = copy.deepcopy(garden)
     result = 0
 
+    should_print = lambda letter: False
+
+    print("Initial garden size: I = {}, J = {}".format(len(garden), len(garden[0])))
     for i in range(len(garden)):
         for j in range(len(garden[0])):
             if visited_garden[i][j] != VISITED:
@@ -293,11 +343,7 @@ if __name__ == "__main__":
                 letter = garden[i][j]
                 working_garden = copy.deepcopy(garden)
                 ar = visit_region(working_garden, lines, i, j)
-                sides = count_sides(lines)
-                print(f"Letter {letter}, area = {ar}")
-                print(f"Sides = {sides}")
-                for indx, line in enumerate(lines, 0):
-                    print(f"\t\t{indx + 1}", line)
+                sides = count_sides(working_garden, lines, should_print(letter))
 
                 tmp_result = ar * sides
                 print(
@@ -305,6 +351,8 @@ if __name__ == "__main__":
                 )
                 result += tmp_result
                 visited_garden = find_all_visited(visited_garden, working_garden)
-                # pprint(visited_garden)
+                if should_print(letter):
+                    pprint(working_garden)
 
     save_garden_to_file(visited_garden, "visited.txt")
+    print(f"Result = {result}")
