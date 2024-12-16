@@ -121,7 +121,12 @@ def get_box_next_points(
     current_left_bracket: Point, command: Vector
 ) -> Tuple[Point, Point]:
     current_right_bracket = Point(current_left_bracket.x + 1, current_left_bracket.y)
-    if command.x != 0:
+    if command.x == -1:
+        return move_point_with_scale(
+            current_left_bracket, command, 2
+        ), move_point_with_scale(current_right_bracket, command, 2)
+
+    if command.x == 1:
         return move_point_with_scale(
             current_left_bracket, command, 2
         ), move_point_with_scale(current_right_bracket, command, 2)
@@ -154,11 +159,10 @@ def eventually_push_boxes_2(
     # warehouse[current_left_bracket.y][current_left_bracket.x] = "."
     # warehouse[current_left_bracket.y][current_left_bracket.x + 1] = "."
     clean_up.append(current_left_bracket)
-    clean_up.append(Point(current_left_bracket.x + 1, current_left_bracket.y))
     next_left_bracket, next_right_bracket = get_box_next_points(
         current_left_bracket, command
     )
-    print(f"eventually_push_boxes_2: append {current_left_bracket}")
+    print(f"eventually_push_boxes_2: append {next_left_bracket}")
     new_left_brackets.append(next_left_bracket)
 
     left_x, left_y, right_x, right_y = (
@@ -242,7 +246,23 @@ def eventually_push_boxes_2(
 
         return left and right
 
-    raise ValueError(f"Invalid warehouse state: {warehouse}")
+    if warehouse[left_y][left_x] == "[" and command.y != 0:
+        print("K5: Left match left bracket, simple move up/down")
+        if eventually_push_boxes_2(
+            warehouse,
+            next_left_bracket,
+            command,
+            clean_up,
+            new_left_brackets,
+        ):
+            return True
+        else:
+            return False
+
+    print("K6: Failed to push boxes")
+    print(f"Left: {warehouse[left_y][left_x]} Right: {warehouse[right_y][right_x]}")
+    print(f"Left: {left_x} {left_y} Right: {right_x} {right_y}")
+    raise ValueError("Failed to push boxes")
 
 
 def draw_boxes(warehouse: List[List[str]], boxes_left_sides: List[Point]) -> None:
@@ -287,7 +307,7 @@ def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> P
     new_boxes = []
 
     if warehouse[y][x] == "[" and command.x != 0:
-        new_left = Point(x, y)
+        new_left = Point(x - 1, y)
         if eventually_push_boxes_2(
             working_warehouse, new_left, command, clean_up_left_points, new_boxes
         ):
@@ -316,13 +336,14 @@ def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> P
 
     if warehouse[y][x] == "[" and command.y != 0:
         new_left = get_left_bracket_position(warehouse, new_robot_position)
-        print("Move robot up/down, hit left bracket, should go 'right'")
+        print("Move robot up/down, hit left bracket, should go 'up'")
         if eventually_push_boxes_2(
             working_warehouse, new_left, command, clean_up_left_points, new_boxes
         ):
             clean_up(working_warehouse, clean_up_left_points)
             draw_boxes(working_warehouse, new_boxes)
             redraw_warehouse(warehouse, working_warehouse)
+            warehouse[y][x] = "@"
             return new_robot_position
         else:
             print("Failed to push boxes | vertical | left")
@@ -342,11 +363,12 @@ def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> P
 
             clean_up(working_warehouse, clean_up_left_points)
             working_warehouse[y][x] = "@"
-            working_warehouse[y][x + 1] = "."
-            working_warehouse[current.y][current.x] = "."
+            # working_warehouse[y][x + 1] = "."
+            # working_warehouse[current.y][current.x] = "."
 
             draw_boxes(working_warehouse, new_boxes)
             redraw_warehouse(warehouse, working_warehouse)
+            warehouse[y][x] = "@"
             return new_robot_position
         else:
             print("Failed to push boxes | vertical | right")
@@ -372,6 +394,15 @@ def sum_warehouse(warehouse: List[List[str]]) -> int:
     return result
 
 
+def count_boxes(warehouse: List[List[str]]) -> int:
+    result = 0
+    for i in range(len(warehouse)):
+        for j in range(len(warehouse[i])):
+            if warehouse[i][j] == "[":
+                result += 1
+    return result
+
+
 if __name__ == "__main__":
     warehouse, commands = read_input()
     print_warehouse(warehouse)
@@ -382,9 +413,11 @@ if __name__ == "__main__":
                 print(f"Robot found at {robot} {i} {j}")
                 break
 
-    for i, command in enumerate(commands[:7]):
+    for i, command in enumerate(commands):
         print(f"######## MOVE NUMBER {i} COMMAND: {command} ########")
         robot = move_robot(warehouse, robot, command_to_vector(command))
-        print_warehouse(warehouse)
+        # print_warehouse(warehouse)
+        #input("Press Enter to continue...")
 
+    print_warehouse(warehouse)
     print(sum_warehouse(warehouse))
