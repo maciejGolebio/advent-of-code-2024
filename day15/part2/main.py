@@ -209,22 +209,6 @@ def eventually_push_boxes_2(
         else:
             return False
 
-    # if (
-    #     warehouse[left_y][left_x] == "["
-    #     or warehouse[right_y][right_x] == "]"
-    #     and command.y != 0
-    # ):
-    #     # Box detected - simple move up or down
-    #     if eventually_push_boxes_2(
-    #         warehouse,
-    #         move_point_with_scale(current_left_bracket, command, 1),
-    #         command,
-    #         new_left_brackets,
-    #     ):
-    #         return True
-    #     else:
-    #         return False
-
     if (
         warehouse[left_y][left_x] == "]"
         or warehouse[right_y][right_x] == "["
@@ -330,23 +314,6 @@ def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> P
         else:
             return current
 
-    # if warehouse[y][x] == "[" or warehouse[y][x] == "]" and command.y != 0:
-    #     # push one up/down
-    #     new_left = get_left_bracket_position(warehouse, new_robot_position)
-    #     print(f"New left bracket: {new_left}")
-    #     if eventually_push_boxes_2(
-    #         working_warehouse, new_left, command, clean_up_left_points, new_boxes
-    #     ):
-    #         clean_up(working_warehouse, clean_up_left_points)
-    #         draw_boxes(working_warehouse, new_boxes)
-    #         redraw_warehouse(warehouse, working_warehouse)
-    #         working_warehouse[y][x] = "@"
-    #         working_warehouse[y][x + 1] = "."
-    #         print_warehouse(working_warehouse)
-    #         return new_robot_position
-    #     else:
-    #         return current
-
     if warehouse[y][x] == "[" and command.y != 0:
         new_left = get_left_bracket_position(warehouse, new_robot_position)
         print("Move robot up/down, hit left bracket, should go 'right'")
@@ -415,7 +382,7 @@ if __name__ == "__main__":
                 print(f"Robot found at {robot} {i} {j}")
                 break
 
-    for i, command in enumerate(commands[:6]):
+    for i, command in enumerate(commands[:7]):
         print(f"######## MOVE NUMBER {i} COMMAND: {command} ########")
         robot = move_robot(warehouse, robot, command_to_vector(command))
         print_warehouse(warehouse)
