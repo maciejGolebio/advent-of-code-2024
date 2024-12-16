@@ -2,6 +2,15 @@ import copy
 from typing import List, Tuple
 
 
+def split_line_logger(func):
+    def wrapper(*args, **kwargs):
+        print(f"\n\n--------------------------------")
+        result = func(*args, **kwargs)
+        print(f"--------------------------------\n\n")
+        return result
+
+    return wrapper
+
 def full_logger(func):
     def wrapper(*args, **kwargs):
         print(f"Calling {func.__name__} with args: { args }\n")
@@ -134,13 +143,12 @@ def eventually_push_boxes_2(
     command: Vector,
     new_left_brackets: List[Point],
 ) -> bool:
-
+    warehouse[current_left_bracket.y][current_left_bracket.x] = "."
+    warehouse[current_left_bracket.y][current_left_bracket.x + 1] = "."
     next_left_bracket, next_right_bracket = get_box_next_points(
         current_left_bracket, command
     )
-
     new_left_brackets.append(current_left_bracket)
-    new_left_brackets.append(next_right_bracket)
 
     left_x, left_y, right_x, right_y = (
         next_left_bracket.x,
@@ -159,39 +167,29 @@ def eventually_push_boxes_2(
         and command.y != 0
     ):
         # Empty space, move the box down or up
-        new_left_brackets.append(next_left_bracket)
-        return new_left_brackets
+        return True
 
     if (warehouse[left_y][left_x] == "." and command.x == -1) or (
         warehouse[right_y][right_x] == "." and command.x == 1
     ):
         # Empty space, move the box left or right
-        if command.x == -1:
-            new_left_brackets.append(next_right_bracket)
-        else:
-            new_left_brackets.append(next_left_bracket)
+        new_left_brackets.append(next_left_bracket)
         return True
 
     if (
         warehouse[left_y][left_x] == "["
+        or warehouse[left_y][left_x] == "]"
+        or warehouse[right_y][right_x] == "["
         or warehouse[right_y][right_x] == "]"
         and command.x != 0
     ):
         # Box detected - simple move left or right
         if eventually_push_boxes_2(
             warehouse,
-            move_point_with_scale(current_left_bracket, command, 2),
+            next_left_bracket,
             command,
             new_left_brackets,
         ):
-            if command.x == -1:
-                new_left_brackets.append(
-                    Point(current_left_bracket.x - 1, current_left_bracket.y)
-                )
-            if command.x == 1:
-                new_left_brackets.append(
-                    Point(current_left_bracket.x + 1, current_left_bracket.y)
-                )
             return True
         else:
             return False
@@ -217,6 +215,7 @@ def eventually_push_boxes_2(
         or warehouse[right_y][right_x] == "["
         and command.y != 0
     ):  # Pyramid move
+        print("Pyramid move")
         left, right = False, False
         if (
             warehouse[left_y][left_x] == "]"
@@ -243,116 +242,24 @@ def eventually_push_boxes_2(
         return left and right
 
 
-@logger
-def eventually_push_boxes(
-    warehouse: List[List[str]], current_left_bracket: Point, command: Vector
-) -> bool:
-
-    next_left_bracket, next_right_bracket = get_box_next_points(
-        current_left_bracket, command
-    )
-
-    left_x, left_y, right_x, right_y = (
-        next_left_bracket.x,
-        next_left_bracket.y,
-        next_right_bracket.x,
-        next_right_bracket.y,
-    )
-
-    if warehouse[left_y][left_x] == "#" or warehouse[right_y][right_x] == "#":
-        # Wall detected
-        return False
-
-    if (
-        warehouse[left_y][left_x] == "."
-        and warehouse[right_y][right_x] == "."
-        and command.y != 0
-    ):
-        # Empty space, move the box down or up
-        warehouse[left_y][left_x] = "["
-        warehouse[right_y][right_x] = "]"
-        return True
-
-    if (warehouse[left_y][left_x] == "." and command.x == -1) or (
-        warehouse[right_y][right_x] == "." and command.x == 1
-    ):
-        # Empty space, move the box left or right
-        if command.x == -1:
-            warehouse[right_y][right_x] = "["
-            warehouse[right_y][right_x + 1] = "]"
-        else:  # command.x == 1
-            warehouse[left_y][left_x] = "]"
-            warehouse[left_y][left_x - 1] = "["
-        return True
-
-    if (
-        warehouse[left_y][left_x] == "["
-        or warehouse[right_y][right_x] == "]"
-        and command.y != 0
-    ):
-        # Box detected
-        print("Simple move LEFT/RIGHT")
-        if eventually_push_boxes(
-            warehouse, move_point_with_scale(current_left_bracket, command, 2), command
-        ):
-            # If the box was moved hori, move the current box
-            if command.x == -1:
-                warehouse[current_left_bracket.y][current_left_bracket.x] = "]"
-                warehouse[current_left_bracket.y][current_left_bracket.x - 1] = "["
-
-            if command.x == 1:
-                warehouse[current_left_bracket.y][current_left_bracket.x] = "["
-                warehouse[current_left_bracket.y][current_left_bracket.x + 1] = "]"
-
-            return True
-        else:
-            return False
-
-    if (
-        warehouse[left_y][left_x] == "["
-        or warehouse[right_y][right_x] == "]"
-        and command.x != 0
-    ):
-        # Box detected
-        print("Simple move UP/DOWN")
-        if eventually_push_boxes(
-            warehouse, move_point_with_scale(current_left_bracket, command, 1), command
-        ):
-            return True
-        else:
-            return False
-
-    if warehouse[left_y][left_x] == "]" or warehouse[right_y][right_x] == "[":
-        print("Pyramid move")
-        # Box detected, only possible when up or down
-
-        if eventually_push_boxes(
-            warehouse,
-            move_point_with_scale(
-                next_left_bracket,
-                command,
-                1,
-            ),
-            command,
-        ):
-            print(f"Swapping boxes, current: {current_left_bracket}")
-            # If the box was moved hori, move the current box
-
-            return True
-        else:
-            return False
-
-    return False
+def draw_boxes(warehouse: List[List[str]], boxes_left_sides: List[Point]) -> None:
+    for left_side in boxes_left_sides:
+        x, y = left_side.x, left_side.y
+        warehouse[y][x] = "["
+        warehouse[y][x + 1] = "]"
 
 
+def redraw_warehouse(warehouse: List[List[str]], new_warehouse) -> None:
+    for i in range(len(warehouse)):
+        for j in range(len(warehouse[i])):
+            warehouse[i][j] = new_warehouse[i][j]
+
+
+@split_line_logger
 @logger
 def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> Point:
-    working_warehouse = copy.deepcopy(warehouse)
-    working_warehouse[current.y][current.x] = "."
     new_robot_position = move_point(current, command)
     x, y = new_robot_position.x, new_robot_position.y
-    
-    moves = []
 
     if warehouse[y][x] == "#":
         # Wall detected
@@ -364,35 +271,56 @@ def move_robot(warehouse: List[List[str]], current: Point, command: Vector) -> P
         warehouse[current.y][current.x] = "."
         return new_robot_position
 
+    working_warehouse = copy.deepcopy(warehouse)
+    working_warehouse[current.y][current.x] = "."
+    working_warehouse[y][x] = "@"
+    moves = []
+
     if warehouse[y][x] == "[" and command.x != 0:
-        new_left = Point(x + 1, y)
+        new_left = Point(x + 2, y)
         if eventually_push_boxes_2(working_warehouse, new_left, command, moves):
-            working_warehouse[y][x] = "@"
-            working_warehouse[current.y][current.x] = "."
+            print("Move robot to the right")
+            draw_boxes(working_warehouse, moves)
+            redraw_warehouse(warehouse, working_warehouse)
             return new_robot_position
+        else:
+            return current
 
     if warehouse[y][x] == "]" and command.x != 0:
-        new_left = Point(x - 1, y + command.y)
+        new_left = Point(x - 2, y + command.y)
         if eventually_push_boxes_2(working_warehouse, new_left, command, moves):
-            working_warehouse[y][x] = "@"
-            working_warehouse[current.y][current.x] = "."
+            print("Move robot to the left")
+            draw_boxes(working_warehouse, moves)
+            redraw_warehouse(warehouse, working_warehouse)
             return new_robot_position
+        else:
+            return current
 
     if warehouse[y][x] == "[" and command.y != 0:
         new_left = move_point_with_scale(Point(x, y), command, 1)
-        if eventually_push_boxes(working_warehouse, new_left, command):
+        if eventually_push_boxes_2(working_warehouse, new_left, command, moves):
             working_warehouse[y][x] = "@"
             working_warehouse[y][x + 1] = "."
             working_warehouse[current.y][current.x] = "."
+            draw_boxes(working_warehouse, moves)
+            redraw_warehouse(warehouse, working_warehouse)
             return new_robot_position
+        else:
+            print("Failed to push boxes | vertical | left")
+            return current
 
     if warehouse[y][x] == "]" and command.y != 0:
         new_left = move_point_with_scale(Point(x, y), command, 1)
-        if eventually_push_boxes(working_warehouse, new_left, command):
+        if eventually_push_boxes_2(working_warehouse, new_left, command, moves):
             working_warehouse[y][x] = "@"
             working_warehouse[y][x - 1] = "."
             working_warehouse[current.y][current.x] = "."
+            draw_boxes(working_warehouse, moves)
+            redraw_warehouse(warehouse, working_warehouse)
             return new_robot_position
+        else:
+            print("Failed to push boxes | vertical | right")
+            return current
 
     return current
 
@@ -424,7 +352,7 @@ if __name__ == "__main__":
                 print(f"Robot found at {robot} {i} {j}")
                 break
 
-    for command in commands:
+    for command in commands[:6]:
         robot = move_robot(warehouse, robot, command_to_vector(command))
 
     print_warehouse(warehouse)
