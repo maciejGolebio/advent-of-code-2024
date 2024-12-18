@@ -79,35 +79,6 @@ if __name__ == "__main__":
     memory = read_input("input.txt", SIZE, LIMIT)
     pprint(memory)
 
-
-    for i in range(40):
-        diagonal_options = get_sum_combinations(i)
-        print(diagonal_options)
-        
-        for x, y in diagonal_options:
-            
-            ## check left to right
-            if memory[y][x] == "#":
-                continue
-            copied_memory = copy.deepcopy(memory)
-            copied_memory[y][x] = "#"
-            result = dijkstra(copied_memory, SIZE)
-            if result == float("inf"):
-                print(f"Part 2: {x}, {y}")
-                exit()
-            else:
-        
-            ## check right to left
-            if memory[x][y] == "#":
-                continue
-            copied_memory = copy.deepcopy()
-            copied_memory[x][y] = "#"
-            result = dijkstra(copied_memory, SIZE)
-            if result == float("inf"):
-                print(f"Part 2: {x}, {y}")
-                exit()
-
-
     result = dijkstra(memory, SIZE)
     print(f"Part 1: {result}")
 
