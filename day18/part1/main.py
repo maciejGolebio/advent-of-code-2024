@@ -18,7 +18,6 @@ def read_input(filename="input.txt", size=71, limit=1024):
             if counter == limit:
                 break
             x, y = map(int, line.strip().split(","))
-            print(x, y)
             memory[y][x] = "#"
             counter += 1
 
@@ -29,7 +28,6 @@ def dijkstra(memory: List[List[str]], size=71):
     start_x, start_y, end_x, end_y = 0, 0, size - 1, size - 1
     rows = len(memory)
     cols = len(memory[0])
-    start_direction = (1, 0)
 
     pq = []
     heapq.heappush(pq, (0, start_x, start_y))
@@ -65,14 +63,6 @@ def dijkstra(memory: List[List[str]], size=71):
     return float("inf")
 
 
-def get_sum_combinations(index):
-    combinations = []
-    for a in range(index + 1):
-        b = index - a
-        combinations.append((a, b))
-    return combinations
-
-
 if __name__ == "__main__":
     SIZE = 71
     LIMIT = 1024
@@ -81,5 +71,3 @@ if __name__ == "__main__":
 
     result = dijkstra(memory, SIZE)
     print(f"Part 1: {result}")
-
-    print("Done!")
