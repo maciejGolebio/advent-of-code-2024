@@ -37,8 +37,6 @@ def dijkstra(
     rows: int,
     cols: int,
 ) -> int:
-    print(start_x, start_y, end_x, end_y)
-
     pq = []
     heapq.heappush(pq, (0, start_x, start_y))
 
@@ -134,16 +132,6 @@ def cheating_dijkstra(
 
         if y == end_y and x == end_x:
             print(f"End Cost: {cost}")
-            # print(
-            #     f"Cheat path: {start_cheated_x}, {start_cheated_y}, -> {stop_cheated_x}, {stop_cheated_y}"
-            # )
-            
-            if start_cheated_x != -1:
-                racetrack[start_cheated_y][start_cheated_x] = "1"
-            if stop_cheated_x != -1:
-                racetrack[stop_cheated_y][stop_cheated_x] = "2"
-
-            # pprint(racetrack)
 
             if start_cheated_x != -1:
                 forbidden_combo.add(
@@ -180,7 +168,6 @@ def cheating_dijkstra(
                     and (start_cheated_x, start_cheated_y, new_x, new_y)
                     not in forbidden_combo
                     and racetrack[new_y][new_x] != "#"
-
                 ):
                     heapq.heappush(
                         pq,
@@ -195,7 +182,7 @@ def cheating_dijkstra(
                             new_y,
                         ),
                     )
-                    #racetrack[new_y][new_x] = "U"
+                    # racetrack[new_y][new_x] = "U"
                 else:
                     continue
 
@@ -222,13 +209,13 @@ def count_cheated(racetrack, normally_shortest, start, end):
     count = 0
     shorter_than_normal = 0
     saves = {}
-    
+
     while shorter_than_normal < normally_shortest or shorter_than_normal == float(
         "inf"
     ):
-        copied_racetrack = copy.deepcopy(racetrack)
+        # copied_racetrack = copy.deepcopy(racetrack)
         shorter_than_normal = cheating_dijkstra(
-            copied_racetrack,
+            racetrack,
             start[0],
             start[1],
             end[0],
@@ -263,5 +250,3 @@ if __name__ == "__main__":
     print(f"Shortest: {normally_shortest}")
 
     count = count_cheated(racetrack, normally_shortest, start, end)
-
-    print(f"Count: {count}")
