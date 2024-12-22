@@ -1,15 +1,21 @@
-import heapq
 from typing import List, Tuple
 
 
-def read_input(filename="input.txt") -> List[List[str]]:
+def read_input(
+    filename="input.txt",
+) -> List[List[str]]:
     with open(filename) as file:
         return [list(line.strip()) for line in file]
 
 
-def pprint(racetrack: List[List[str]]):
+def pprint_track(racetrack: List[List[str]]):
     for tile in racetrack:
-        print("".join(tile))
+        print(" ".join(tile))
+
+
+def pprint_distances(distances: List[List[int]]):
+    for row in distances:
+        print(" ".join(["{: >2}".format(str(cell)) for cell in row]))
 
 
 def find_start_end(racetrack: List[List[str]]) -> Tuple[int, int]:
@@ -23,8 +29,19 @@ def find_start_end(racetrack: List[List[str]]) -> Tuple[int, int]:
     return start, end
 
 
-def dijkstra(
-    racetrack: List[List[str]],
+racetrack = read_input()
+cols = len(racetrack)
+rows = len(racetrack[0])
+distances = [[-1] * cols for _ in range(rows)]
+start, end = find_start_end(racetrack)
+distances[start[1]][start[0]] = 0
+
+SHORTER = 100 if len(racetrack) > 100 else 50
+
+DIRECTIONS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+
+
+def draw_distances(
     start_x: int,
     start_y: int,
     end_x: int,
@@ -32,133 +49,75 @@ def dijkstra(
     rows: int,
     cols: int,
 ) -> int:
-    print(start_x, start_y, end_x, end_y)
-
-    pq = []
-    heapq.heappush(pq, (0, start_x, start_y))
-
-    visited = {}
-
-    while pq:
-
-        (
-            cost,
-            x,
-            y,
-        ) = heapq.heappop(pq)
-
-        state = (x, y)
-        if state in visited and visited[state] <= cost:
-            continue
-        visited[state] = cost
-
-        if y == end_y and x == end_x:
-            return cost, visited
-
-        for new_direction in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            new_x, new_y = x + new_direction[0], y + new_direction[1]
-
-            if new_x < 0 or new_x >= cols or new_y < 0 or new_y >= rows:
+    next_x = start_x
+    next_y = start_y
+    while next_x != end_x or next_y != end_y:
+        for dx, dy in DIRECTIONS:
+            x = next_x + dx
+            y = next_y + dy
+            if x < 0 or x >= cols or y < 0 or y >= rows:
+                continue
+            if racetrack[y][x] == "#":
+                continue
+            if distances[y][x] != -1:
                 continue
 
-            if racetrack[new_y][new_x] != "#":
-                racetrack[new_y][new_x] = racetrack[y][x]
-                heapq.heappush(pq, (cost + 1, new_x, new_y))
-
-    return float("inf")
+            distances[y][x] = distances[next_y][next_x] + 1
+            next_x, next_y = x, y
 
 
-def can_cheat(cheated: int) -> bool:
-    return cheated > 0
-
-
-def get_next_cheated(cheated: int) -> int:
-    """
-    for 2 - keeps cheating right
-    for 1 - stops cheating
-    for 0 - stopped cheating
-    """
-    if cheated == 2:
-        return 2
-    return 0
-
-
-def cheating_dijkstra(
-    racetrack: List[List[str]],
-    start_x: int,
-    start_y: int,
-    end_x: int,
-    end_y: int,
+def find_cuts_part2(
     rows: int,
     cols: int,
-    regular_cost: int,
-):
-    pq = []
-    heapq.heappush(pq, (0, start_x, start_y, 2))
+) -> int:
+    counter = 0
+    counted = set()
+    for i in range(cols):
+        for j in range(rows):
 
-    visited = {}
-    count_shorter = 0
-
-    while pq:
-
-        (
-            cost,
-            x,
-            y,
-            cheated,  # 0 - cheated, 1 - cheated in previous step, 2 - not cheated
-        ) = heapq.heappop(pq)
-
-        state = (x, y)
-        if state in visited and visited[state] <= cost:
-            continue
-        
-        visited[state] = cost
-
-        if cost >= regular_cost:
-            continue
-            # return float("inf"), 0
-
-        if y == end_y and x == end_x:
-            count_shorter += 1
-            continue
-            # return cost, count_shorter
-
-        for new_direction in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            new_x, new_y = x + new_direction[0], y + new_direction[1]
-
-            if new_x < 0 or new_x >= cols or new_y < 0 or new_y >= rows:
+            if racetrack[j][i] == "#":
                 continue
 
-            if racetrack[new_y][new_x] == "#" and can_cheat(cheated):
-                heapq.heappush(pq, (cost + 1, new_x, new_y, cheated - 1))
-                continue
-            elif racetrack[new_y][new_x] != "#":
-                heapq.heappush(pq, (cost + 1, new_x, new_y, get_next_cheated(cheated)))
+            for radius in range(1, 21):
 
-    if count_shorter == 0:
-        return float("inf"), 0
+                for dj in range(radius + 1):
+                    di = radius - dj
 
-    return cost, count_shorter
+                    for next_j, next_i in {
+                        (j + dj, i + di),
+                        (j + dj, i - di),
+                        (j - dj, i + di),
+                        (j - dj, i - di),
+                    }:
+                        if next_i < 0 or next_i >= cols or next_j < 0 or next_j >= rows:
+                            continue
+
+                        if racetrack[next_j][next_i] == "#":
+                            continue
+
+                        if (
+                            distances[j][i] - distances[next_j][next_i]
+                            >= (SHORTER + radius)
+                            and (j, i, next_j, next_i) not in counted
+                        ):
+                            # counted.add((j, i, next_j, next_i))
+                            # print(j, i, next_j, next_i)
+                            counter += 1
+    return counter
 
 
 if __name__ == "__main__":
-    racetrack = read_input()
-    start, end = find_start_end(racetrack)
-    shortest, visited = dijkstra(
-        racetrack, start[0], start[1], end[0], end[1], len(racetrack), len(racetrack[0])
-    )
-    print(shortest)
-    print(visited)
 
-    shortest_cheating, count_shorter = cheating_dijkstra(
-        racetrack,
-        start[0],
-        start[1],
-        end[0],
-        end[1],
-        len(racetrack),
-        len(racetrack[0]),
-        shortest,
-    )
-    print(f"Shortest cheating: {shortest_cheating}")
-    print(f"Count shorter: {count_shorter}")
+    start, end = find_start_end(racetrack)
+    draw_distances(start[0], start[1], end[0], end[1], rows, cols)
+    print(find_cuts_part2(rows, cols))
+
+# 68974 - too low
+# 74131 - too low
+# 148262 - too low
+# 2265360 >= 102 wrong
+# 2170110 >= 100 + radios wrong
+# 2170110 range(1, 21) -> range(2, 21) wrong
+# 1085055 - remove abs wrong
+# 1075121 - 100 + radius + 1 wrong
+# 982425 wih set
